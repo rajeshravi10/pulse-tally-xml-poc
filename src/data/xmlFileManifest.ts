@@ -15,6 +15,7 @@ export interface XmlFileItem {
   sizeText: string;
   sizeBytes: number;
   isDefault?: boolean;
+  isUploaded?: boolean;
   rawXml: string;
 }
 

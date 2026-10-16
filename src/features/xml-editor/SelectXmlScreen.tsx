@@ -1,19 +1,43 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Typography, Grid, Paper, Stack, Alert } from '@mui/material';
-import { SAMPLE_XML_FILES, type XmlFileItem } from '../../data/xmlFileManifest';
+import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
+import type { XmlFileItem } from '../../data/xmlFileManifest';
 import { XmlCodePreview } from '../../components/XmlCodePreview';
 
 interface SelectXmlScreenProps {
+  fileList: XmlFileItem[];
   selectedFile: XmlFileItem;
   onSelectFile: (file: XmlFileItem) => void;
+  onUploadFile: (file: File) => void;
   parseError: string | null;
 }
 
 export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
+  fileList,
   selectedFile,
   onSelectFile,
+  onUploadFile,
   parseError,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      onUploadFile(files[0]);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      onUploadFile(files[0]);
+    }
+  };
+
   return (
     <Box sx={{ width: '100%', pb: 3 }}>
       {/* Page Title & Subtitle */}
@@ -40,8 +64,8 @@ export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
           mb: 3,
         }}
       >
-        Four sample files ship with this prototype. Pick one and the preview updates. Next, the XML is
-        parsed into form fields where only business-approved values can be edited.
+        Select any sample file below or upload your own Tally XML file. The XML is parsed 100% in your
+        browser and converted into dynamic fields for review and editing.
       </Typography>
 
       {parseError && (
@@ -52,8 +76,76 @@ export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
 
       {/* Two Column Layout */}
       <Grid container spacing={3}>
-        {/* Left: Source Files List */}
+        {/* Left: Source Files List & Upload Box */}
         <Grid size={{ xs: 12, md: 5 }}>
+          {/* Upload Dropzone */}
+          <Paper
+            elevation={0}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+            sx={{
+              p: 2.25,
+              mb: 2.5,
+              borderRadius: '10px',
+              border: isDragOver ? '2px dashed #0d6e5a' : '2px dashed #cbd5e1',
+              bgcolor: isDragOver ? '#f0fdf4' : '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: '#0d6e5a',
+                bgcolor: '#f8fafc',
+              },
+            }}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".xml,text/xml,application/xml"
+              hidden
+              onChange={handleFileChange}
+            />
+
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: '8px',
+                bgcolor: '#ecfdf5',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#0d6e5a',
+                flexShrink: 0,
+              }}
+            >
+              <CloudUploadOutlinedIcon sx={{ fontSize: 24 }} />
+            </Box>
+
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  color: '#0f172a',
+                  lineHeight: 1.3,
+                }}
+              >
+                Upload your own Tally XML file
+              </Typography>
+              <Typography sx={{ fontSize: '12px', color: '#64748b', mt: 0.25 }}>
+                Click to browse or drag & drop .xml file
+              </Typography>
+            </Box>
+          </Paper>
+
           {/* Section Header */}
           <Box
             sx={{
@@ -73,7 +165,7 @@ export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
                 textTransform: 'uppercase',
               }}
             >
-              SOURCE FILES
+              AVAILABLE FILES
             </Typography>
             <Typography
               sx={{
@@ -82,13 +174,13 @@ export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
                 fontWeight: 500,
               }}
             >
-              {SAMPLE_XML_FILES.length} available
+              {fileList.length} files
             </Typography>
           </Box>
 
           {/* Cards List */}
           <Stack spacing={1.5}>
-            {SAMPLE_XML_FILES.map((file) => {
+            {fileList.map((file) => {
               const isSelected = selectedFile.id === file.id;
 
               return (
@@ -142,7 +234,7 @@ export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
 
                     {/* Card Content */}
                     <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                      {/* Top Row: Title, Default Badge, and Amount */}
+                      {/* Top Row: Title, Default/Uploaded Badge, and Amount */}
                       <Box
                         sx={{
                           display: 'flex',
@@ -161,7 +253,26 @@ export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
                           >
                             {file.displayName}
                           </Typography>
-                          {file.isDefault && (
+
+                          {file.isUploaded && (
+                            <Box
+                              sx={{
+                                bgcolor: '#0284c7',
+                                color: '#ffffff',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                px: 0.9,
+                                py: 0.1,
+                                borderRadius: '4px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                              }}
+                            >
+                              Uploaded
+                            </Box>
+                          )}
+
+                          {file.isDefault && !file.isUploaded && (
                             <Box
                               sx={{
                                 bgcolor: '#0f172a',
@@ -250,7 +361,7 @@ export const SelectXmlScreen: React.FC<SelectXmlScreenProps> = ({
             xmlContent={selectedFile.rawXml}
             filename={selectedFile.filename}
             headerSubtitle="Raw XML · read-only preview"
-            maxHeight={460}
+            maxHeight={520}
           />
         </Grid>
       </Grid>

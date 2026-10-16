@@ -7,6 +7,7 @@ import { computeFieldChanges, type ChangedField } from '../utils/diffXml';
 
 export function useXmlDocument() {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [fileList, setFileList] = useState<XmlFileItem[]>(SAMPLE_XML_FILES);
   const [selectedFile, setSelectedFile] = useState<XmlFileItem>(SAMPLE_XML_FILES[0]);
   const [parsedData, setParsedData] = useState<ParsedVoucherData | null>(null);
   const [originalFieldValues, setOriginalFieldValues] = useState<Record<string, string>>({});
@@ -14,13 +15,82 @@ export function useXmlDocument() {
   const [isParsing, setIsParsing] = useState<boolean>(false);
   const [parseError, setParseError] = useState<string | null>(null);
 
-  // Select a new sample file
+  // Select a file
   const handleSelectFile = useCallback((file: XmlFileItem) => {
     setSelectedFile(file);
     setParsedData(null);
     setOriginalFieldValues({});
     setCurrentFieldValues({});
     setParseError(null);
+  }, []);
+
+  // Upload an XML file locally via browser FileReader
+  const handleUploadXml = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rawXml = e.target?.result as string;
+      if (!rawXml) return;
+
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawXml, 'application/xml');
+        const parserErrors = doc.getElementsByTagName('parsererror');
+        if (parserErrors.length > 0) {
+          setParseError('The uploaded file is not a valid XML file. Please check the file syntax.');
+          return;
+        }
+
+        const v = doc.getElementsByTagName('VOUCHER')[0];
+        if (!v) {
+          setParseError('The uploaded XML does not contain a <VOUCHER> element. Please upload a valid Tally XML file.');
+          return;
+        }
+
+        const vchType = v.getElementsByTagName('VOUCHERTYPENAME')[0]?.textContent?.trim() || 'Custom Voucher';
+        const vchNum = v.getElementsByTagName('VOUCHERNUMBER')[0]?.textContent?.trim() || 'Uploaded';
+        const party = v.getElementsByTagName('PARTYLEDGERNAME')[0]?.textContent?.trim() || 'Uploaded Party';
+
+        const amountEls = v.getElementsByTagName('AMOUNT');
+        let amountFormatted = '₹ 0.00';
+        if (amountEls && amountEls.length > 0) {
+          const num = Math.abs(parseFloat(amountEls[0].textContent || '0'));
+          if (!isNaN(num)) {
+            amountFormatted = `₹ ${num.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+          }
+        }
+
+        const sizeKB = (file.size / 1024).toFixed(1) + ' KB';
+
+        const uploadedItem: XmlFileItem = {
+          id: `upload-${Date.now()}`,
+          displayName: file.name.replace(/\.[^/.]+$/, ''),
+          filename: file.name,
+          voucherType: vchType,
+          partyName: party,
+          voucherNumber: vchNum,
+          amountFormatted,
+          amountNumber: 0,
+          sizeText: sizeKB,
+          sizeBytes: file.size,
+          rawXml,
+          isUploaded: true,
+        };
+
+        setFileList((prev) => [uploadedItem, ...prev]);
+        setSelectedFile(uploadedItem);
+        setParsedData(null);
+        setOriginalFieldValues({});
+        setCurrentFieldValues({});
+        setParseError(null);
+      } catch (err) {
+        console.error('Failed to parse uploaded file:', err);
+        setParseError('Could not process the uploaded XML file.');
+      }
+    };
+    reader.onerror = () => {
+      setParseError('Error reading the uploaded file from disk.');
+    };
+    reader.readAsText(file);
   }, []);
 
   // Parse selected file and advance to Screen 2
@@ -109,7 +179,6 @@ export function useXmlDocument() {
   const getLatestSerializedXml = useCallback((): string => {
     if (!parsedData?.xmlDoc) return selectedFile.rawXml;
 
-    // Apply all current edited field values to the in-memory XML document
     for (const [key, val] of Object.entries(currentFieldValues)) {
       updateVoucherFieldNode(parsedData.xmlDoc, key, val);
     }
@@ -117,7 +186,7 @@ export function useXmlDocument() {
     return serializeXml(parsedData.xmlDoc);
   }, [parsedData, currentFieldValues, selectedFile]);
 
-  // Full XML document serialized - explicitly depends on currentFieldValues!
+  // Full XML document serialized
   const fullSerializedXml = useMemo(() => {
     return getLatestSerializedXml();
   }, [getLatestSerializedXml]);
@@ -125,8 +194,10 @@ export function useXmlDocument() {
   return {
     currentStep,
     setCurrentStep,
+    fileList,
     selectedFile,
     handleSelectFile,
+    handleUploadXml,
     handleParseAndReview,
     isParsing,
     parseError,

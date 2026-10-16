@@ -12,8 +12,10 @@ export const XmlEditorApp: React.FC = () => {
   const {
     currentStep,
     setCurrentStep,
+    fileList,
     selectedFile,
     handleSelectFile,
+    handleUploadXml,
     handleParseAndReview,
     isParsing,
     parseError,
@@ -78,8 +80,10 @@ export const XmlEditorApp: React.FC = () => {
           <Box sx={{ flexGrow: 1, mt: 1 }}>
             {currentStep === 1 && (
               <SelectXmlScreen
+                fileList={fileList}
                 selectedFile={selectedFile}
                 onSelectFile={handleSelectFile}
+                onUploadFile={handleUploadXml}
                 parseError={parseError}
               />
             )}
