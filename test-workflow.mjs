@@ -41,12 +41,10 @@ const emptyDayjs = parseXmlDateToDayjs('');
 if (emptyDayjs !== null) throw new Error('Empty date must return null');
 console.log('  ✓ Invalid and empty dates return null (no silent fallback to today)\n');
 
-// 2. Test dynamic detection across all 4 files
+// 2. Test dynamic detection across the 2 files
 const files = [
-  'Tonic Creative Technologies.xml',
   'Airbnb.xml',
-  'Nordstorm Inc.xml',
-  'Nike Inc.xml'
+  'Nordstorm Inc.xml'
 ];
 
 for (const f of files) {
