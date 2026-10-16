@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
-import dayjs from 'dayjs';
 import { parseXmlString } from './src/features/xml-editor/utils/parseXml.js';
 import { updateVoucherFieldNode } from './src/features/xml-editor/utils/updateXmlNode.js';
 import { serializeXml } from './src/features/xml-editor/utils/serializeXml.js';
